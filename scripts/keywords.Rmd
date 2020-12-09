@@ -1,0 +1,225 @@
+---
+title: "Keyword trends in aquatic vegetation biology and ecology"
+author: "Arthur de Grandpré"
+date: "31/10/2020"
+output: 
+  html_document: 
+    toc: yes
+    toc_float: yes
+---
+# Methods
+
+This script counts word occurrences in titles and abstract of 500 papers from 1990 to 1999, 2000 to 2009, 2010 to 2019 in order to represent trends and research biases. The search was performed on dimensions.ai with the search terms "aquatic vegetation" OR "macrophytes" OR "aquatic plants" OR "seagrass", within the fields of plant biology AND ecology. The 500 better cited paper according the FCR index were selected for each time period according to the extraction limit from the platform.
+
+```{r setup, message = F, warning = F, echo = F}
+library(readxl)
+library(tidyverse)
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+library(ggplot2)
+```
+
+```{r data, include = F, echo = F}
+files = dir("../data/keyword_search/", full.names=T)
+data_raw = rbind(read_xlsx(files[1], skip=1),read_xlsx(files[2], skip=1))
+data_raw = rbind(data_raw, read_xlsx(files[3],skip=1))
+
+colnames(data_raw)
+
+df = data_raw %>% 
+  select(c("PubYear","Title","Abstract","MeSH terms","Times cited","RCR","FCR"))
+
+```
+
+The resulting data is structure as follow: 
+
+```{r head, echo = F}
+head(df)
+```
+
+Using the tm package for text mining, all words from the titles and abstracts are extracted and stemmed to their shortest general form (plants becomes plant, concentration becomes concentr). They were then all counted, ranked and filtered. Uninteresting words and those part of the original research keywords were removed, and the remaining were put into a word cloud.  
+  
+The list of custom stopwords included contains is as follow :  
+
+c("plant","seagrass","aquat","macrophyt","effect",  
+"respons","wetland","tropic","water","speci","impact",  
+"influenc","two","submerg","new","use","increas","studi",  
+"differ","high","low","concentr","may","result","veget",  
+"show","also","can","found","total","limit","higher",  
+"reduc","level","howev","suggest","affect","signific",  
+"within","three","measur","among","test",
+"lake","rate","biomass","chang","relat","condit",
+"organ","growth","leav","indic","import","site","meadow"))
+
+
+```{r, echo=F}
+set.seed(42)
+
+dfb = data.frame()
+
+for(i in 1:3){
+# i=1
+  if(i==1){dfs = df %>% filter(PubYear %in% 1990:1999)} else
+    if(i==2){dfs = df %>% filter(PubYear %in% 2000:2009)} else
+      if(i==3){dfs = df %>% filter(PubYear %in% 2010:2019)}
+
+vc = VCorpus(VectorSource(dfs[,c(2,3)]))
+
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+vc <- tm_map(vc, toSpace, "/")
+vc <- tm_map(vc, toSpace, "@")
+vc <- tm_map(vc, toSpace, "\\|")
+
+# Convert the text to lower case
+vc <- tm_map(vc, content_transformer(tolower))
+# Remove numbers
+vc <- tm_map(vc, removeNumbers)
+# Remove english common stopwords
+vc <- tm_map(vc, removeWords, stopwords("english"))
+# Remove punctuations
+vc <- tm_map(vc, removePunctuation)
+# Eliminate extra white spaces
+vc <- tm_map(vc, stripWhitespace)
+# Text stemming
+vc <- tm_map(vc, stemDocument)
+
+
+# Remove own stopwords
+# specify stopwords as a character vector
+vc <- tm_map(vc, removeWords, c("plant", "seagrass","aquat","macrophyt","effect","respons","wetland","tropic","water","speci","impact","influenc","two","submerg","new","use","increas","studi","differ","high","low","concentr","may","result","veget","show","also","can","found","total","limit","higher","reduc","level","howev","suggest","affect","signific","within","three","measur","among","test","lake","rate","biomass","chang","relat","condit","organ","growth","leav","indic","import","site","meadow"))
+
+dtm <- TermDocumentMatrix(vc)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+d$year = c(1990,2000,2010)[i]
+# head(d, 10)
+
+dfb = rbind(dfb,d)
+}
+
+```
+
+# Wordclouds
+
+(Max. 75 words, first cloud is 2000-2009 followed by 2010-2019)  
+
+```{r, fig.height=7, warning=F,message=F, echo=F}
+# par(mfrow=c(1,2))
+w0 = dfb %>% filter(year==1990)
+
+wordcloud(words = w0$word, freq = w0$freq, min.freq = 1,
+          max.words=75, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(4, "Dark2"),
+          scale=c(3,0.6))
+
+
+w1 = dfb %>% filter(year==2000)
+
+wordcloud(words = w1$word, freq = w1$freq, min.freq = 1,
+          max.words=75, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(4, "Dark2"),
+          scale=c(3,0.6))
+
+w2 = dfb %>% filter(year==2010)
+
+wordcloud(words = w2$word, freq = w2$freq, min.freq = 1,
+          max.words=75, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(4, "Dark2"),
+          scale=c(3,0.6))
+
+
+# par(mfrow=c(1,1))
+```
+
+# Barplots
+The results can also be displayed as barplots, in a more neutral manner, either combined or by year.  
+Let's try it with 15 words.
+
+```{r, fig.height=6, echo=F}
+treshold = 15
+
+dfb2 = dfb %>% 
+  pivot_wider(id_cols = "word",names_from="year",names_prefix = "freq_",values_from="freq") %>% 
+  mutate(total = freq_1990+freq_2000+freq_2010) %>% 
+  slice_max(order_by=total, n = treshold)
+
+dfb3 = dfb2 %>% 
+  pivot_longer(cols=c(2,3,4))
+
+ggplot(data=dfb3, aes(x=reorder(word,total), y=value, fill=name)) +
+  geom_col(position="dodge") +
+  labs(x = "words",
+       y = "frequency",
+       title = paste0("Title + abstract ",treshold," most common words, 1990 - 2019")) +
+  coord_flip()+
+  theme_bw()
+
+dfb4 = dfb3 %>% 
+  arrange(name, value) %>% 
+  mutate(order = row_number())
+
+
+ggplot(dfb4, aes(x=order, y=value, fill=name)) +
+  facet_wrap(~name, scales="free")+
+  geom_col(show.legend=F)+
+  coord_flip()+
+  scale_x_continuous(
+    breaks = dfb4$order,
+    labels = dfb4$word,
+    expand = c(0,0)
+  ) +
+  labs(x = "Mots",
+       y = "Occurences",
+       title = paste0("Titre + Résumé, ",treshold," mots les plus communs, 1990 - 2019")) +
+  ylim(c(0,800))+
+  theme_bw()
+
+```
+
+Now with 25 words.
+
+```{r, fig.height=6, echo=F}
+treshold = 25
+
+dfb2 = dfb %>% 
+  pivot_wider(id_cols = "word",names_from="year",names_prefix = "freq_",values_from="freq") %>% 
+  mutate(total = freq_1990+freq_2000+freq_2010) %>% 
+  slice_max(order_by=total, n = treshold)
+
+dfb3 = dfb2 %>% 
+  pivot_longer(cols=c(2,3,4))
+
+ggplot(data=dfb3, aes(x=reorder(word,total), y=value, fill=name)) +
+  geom_col(position="dodge") +
+  labs(x = "words",
+       y = "frequency",
+       title = paste0("Title + abstract ",treshold," most common words, 1990 - 2019")) +
+  coord_flip()+
+  theme_bw()
+
+dfb4 = dfb3 %>% 
+  arrange(name, value) %>% 
+  mutate(order = row_number())
+
+
+ggplot(dfb4, aes(x=order, y=value, fill=name)) +
+  facet_wrap(~name, scales="free")+
+  geom_col(show.legend=F)+
+  coord_flip()+
+  scale_x_continuous(
+    breaks = dfb4$order,
+    labels = dfb4$word,
+    expand = c(0,0)
+  ) +
+  labs(x = "Mots",
+       y = "Occurences",
+       title = paste0("Titre + Résumé, ",treshold," mots les plus communs, 1990 - 2019")) +
+  ylim(c(0,800))+
+  theme_bw()
+
+```
+
+
