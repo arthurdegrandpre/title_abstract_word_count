@@ -5,4 +5,8 @@ The 500 better cited paper according the FCR index were selected for each time p
 Download the keywords.RMD file from the scripts folder to access the script in Rstudio  
 Download the keywords.HTML file to access the results in a web browser window  
   
-The data is available within the "data" folder on the repository.
+The data is available within the "data" folder on the repository.  
+  
+  
+Text mining and word cloud fundamentals in R ressource:  
+http://www.sthda.com/english/wiki/text-mining-and-word-cloud-fundamentals-in-r-5-simple-steps-you-should-know
