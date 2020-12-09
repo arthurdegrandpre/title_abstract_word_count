@@ -2,7 +2,7 @@ This project counts word occurrences in titles and abstract of 500 papers from 1
 The search was performed on dimensions.ai with the search terms "aquatic vegetation" OR "macrophytes" OR "aquatic plants" OR "seagrass", within the fields of plant biology AND ecology.  
 The 500 better cited paper according the FCR index were selected for each time period according to the extraction limit from the platform.  
   
-Download the .RMD file to access the script in Rstudio  
-Download the .HTML file to access the results in a web browser window  
+Download the keywords.RMD file from the scripts folder to access the script in Rstudio  
+Download the keywords.HTML file to access the results in a web browser window  
   
 The data is available within the "data" folder on the repository.
